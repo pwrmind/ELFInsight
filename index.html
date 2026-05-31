@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELF Insight Web Pro</title>
+    <title>Binary Insight Web</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Alpine.js -->
@@ -24,18 +24,18 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col" x-data="elfAnalyzer()" x-cloak>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col" x-data="binaryAnalyzer()" x-cloak>
 
     <!-- ХЕДЕР -->
     <header class="bg-slate-800 border-b border-slate-700 p-4 shadow-md">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <div class="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-                    <i class="fas fa-terminal text-xl text-white"></i>
+                    <i class="fas fa-shield-halved text-xl text-white"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">ELF Insight Web</h1>
-                    <p class="text-xs text-slate-400 font-medium">Интерактивный анализатор и редактор структур</p>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Binary Insight Web</h1>
+                    <p class="text-xs text-slate-400 font-medium">Анализатор Linux ELF и Windows PE (EXE/DLL)</p>
                 </div>
             </div>
             
@@ -46,11 +46,12 @@
                     </span>
                 </template>
                 <template x-if="fileLoaded">
-                    <span class="text-xs bg-emerald-950/40 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-800/60 max-w-[200px] truncate" x-text="'Файл: ' + fileName"></span>
+                    <span class="text-xs bg-emerald-950/40 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-800/60 max-w-[250px] truncate" 
+                          x-text="'[' + fileFormat + '] ' + fileName"></span>
                 </template>
 
                 <label class="cursor-pointer bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-indigo-600/10 transition flex items-center gap-2">
-                    <i class="fas fa-file-upload"></i> Открыть ELF
+                    <i class="fas fa-file-upload"></i> Открыть файл
                     <input type="file" class="hidden" @change="handleFileUpload">
                 </label>
                 
@@ -69,22 +70,23 @@
         
         <!-- ЛЕВАЯ КОЛОНКА: ТАБЛИЦЫ -->
         <div class="lg:col-span-3 space-y-6">
-            <!-- Заглушка, если файл не выбран -->
+            <!-- Заглушка -->
             <div x-show="!fileLoaded" class="bg-slate-800/40 border-2 border-dashed border-slate-700 rounded-2xl p-12 text-center">
                 <div class="inline-flex p-4 bg-slate-800 rounded-full text-slate-500 mb-4">
-                    <i class="fas fa-folder-open text-3xl"></i>
+                    <i class="fas fa-box-open text-3xl"></i>
                 </div>
-                <h3 class="text-lg font-medium text-slate-300 mb-1">Ни один файл не загружен</h3>
-                <p class="text-sm text-slate-500 max-w-md mx-auto mb-5">Загрузите любой ELF-файл (исполняемый, объектный или .so) для просмотра и редактирования структуры.</p>
+                <h3 class="text-lg font-medium text-slate-300 mb-1">Файл не выбран</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto mb-5">Поддерживаются исполняемые файлы Linux (ELF, .o, .so) и Windows (PE, .exe, .dll).</p>
             </div>
 
-            <!-- СЛОЙ 1: ELF HEADER -->
-            <div x-show="fileLoaded" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+            <!-- СЛОЙ 1: ОСНОВНОЙ ЗАГОЛОВОК (ELF или PE) -->
+            <div x-show="fileLoaded && parsedHeader && Object.keys(parsedHeader).length" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-slate-750 p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 class="text-md font-bold tracking-wide text-slate-200 flex items-center gap-2">
-                        <i class="fas fa-heading text-indigo-400"></i> 1. ELF Header
+                        <i class="fas fa-microchip text-indigo-400"></i> 
+                        <span x-text="fileFormat === 'ELF' ? '1. ELF Header' : '1. PE Header (DOS/COFF/Optional)'"></span>
                     </h2>
-                    <span class="text-xs font-mono text-slate-400" x-text="is64Bit ? 'ELF64' : 'ELF32'"></span>
+                    <span class="text-xs font-mono text-slate-400" x-text="is64Bit ? '64-bit' : '32-bit'"></span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-sm">
@@ -107,7 +109,7 @@
                                     <td class="p-3 font-semibold text-slate-300" x-text="key"></td>
                                     <td class="p-3">
                                         <span class="px-2 py-0.5 rounded text-xs font-medium"
-                                              :class="field.hasDictionary ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-slate-900 text-indigo-400'"
+                                              :class="field.hasDictionary ? 'bg-indigo-950/50 text-indigo-300 border border-indigo-800/50' : 'bg-slate-900 text-emerald-400'"
                                               x-text="getHumanReadableValue(key, field.value)"></span>
                                     </td>
                                     <td class="p-3 pr-4 text-right">
@@ -122,11 +124,11 @@
                 </div>
             </div>
 
-            <!-- СЛОЙ 2: PROGRAM HEADERS (Сегменты) -->
-            <div x-show="fileLoaded && programHeaders.length > 0" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+            <!-- СЛОЙ 2: PROGRAM HEADERS (только для ELF) -->
+            <div x-show="fileLoaded && fileFormat === 'ELF' && programHeaders.length" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-slate-750 p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 class="text-md font-bold tracking-wide text-slate-200 flex items-center gap-2">
-                        <i class="fas fa-layer-group text-indigo-400"></i> 2. Program Headers
+                        <i class="fas fa-layer-group text-indigo-400"></i> 2. Program Headers (только ELF)
                     </h2>
                     <span class="text-xs font-mono text-slate-400" x-text="'Сегментов: ' + programHeaders.length"></span>
                 </div>
@@ -137,24 +139,20 @@
                                 <th class="p-3 pl-4">Тип</th>
                                 <th class="p-3">Смещение</th>
                                 <th class="p-3">Вирт. адрес</th>
-                                <th class="p-3">Размер в файле</th>
-                                <th class="p-3">Размер в памяти</th>
+                                <th class="p-3">Файловый размер</th>
+                                <th class="p-3">Память</th>
                                 <th class="p-3">Флаги</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-700/60 font-mono">
-                            <template x-for="(ph, idx) in programHeaders" :key="idx">
+                            <template x-for="ph in programHeaders" :key="ph.type">
                                 <tr class="hover:bg-slate-700/30">
                                     <td class="p-3 pl-4 text-slate-300 font-semibold" x-text="ph.typeName"></td>
-                                    <td class="p-3 text-slate-400" x-text="'0x' + ph.offset.toString(16).toUpperCase()"></td>
-                                    <td class="p-3 text-slate-400" x-text="'0x' + ph.vaddr.toString(16).toUpperCase()"></td>
+                                    <td class="p-3 text-slate-400" x-text="'0x'+ph.offset.toString(16).toUpperCase()"></td>
+                                    <td class="p-3 text-slate-400" x-text="'0x'+ph.vaddr.toString(16).toUpperCase()"></td>
                                     <td class="p-3 text-slate-400" x-text="ph.filesz"></td>
                                     <td class="p-3 text-slate-400" x-text="ph.memsz"></td>
-                                    <td class="p-3">
-                                        <span class="text-xs font-mono px-2 py-0.5 rounded"
-                                              :class="ph.flagsStr === 'r-x' ? 'bg-blue-900/40 text-blue-300' : (ph.flagsStr === 'rw-' ? 'bg-yellow-900/40 text-yellow-300' : 'bg-slate-700 text-slate-400')"
-                                              x-text="ph.flagsStr"></span>
-                                    </td>
+                                    <td class="p-3"><span class="text-xs font-mono px-2 py-0.5 rounded" :class="ph.flagsStr==='r-x'?'bg-blue-900/40 text-blue-300':(ph.flagsStr==='rw-'?'bg-yellow-900/40 text-yellow-300':'bg-slate-700 text-slate-400')" x-text="ph.flagsStr"></span></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -162,11 +160,12 @@
                 </div>
             </div>
 
-            <!-- СЛОЙ 3: SECTION HEADERS (Секции) -->
-            <div x-show="fileLoaded && parsedSections.length > 0" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+            <!-- СЛОЙ 3: SECTION HEADERS (для обоих форматов) -->
+            <div x-show="fileLoaded && parsedSections.length" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-slate-750 p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 class="text-md font-bold tracking-wide text-slate-200 flex items-center gap-2">
-                        <i class="fas fa-folder-tree text-emerald-400"></i> 3. Section Headers
+                        <i class="fas fa-folder-tree text-emerald-400"></i> 
+                        <span x-text="fileFormat === 'ELF' ? '3. Section Headers' : '2. Sections (PE)'"></span>
                     </h2>
                     <span class="text-xs font-mono text-slate-400" x-text="'Секций: ' + parsedSections.length"></span>
                 </div>
@@ -175,28 +174,20 @@
                         <thead>
                             <tr class="bg-slate-900/50 text-slate-400 border-b border-slate-700 font-medium">
                                 <th class="p-3 pl-4">Имя</th>
-                                <th class="p-3">Тип</th>
-                                <th class="p-3">Адрес</th>
+                                <th class="p-3">Тип / Характеристики</th>
+                                <th class="p-3">Вирт. адрес</th>
                                 <th class="p-3">Смещение</th>
                                 <th class="p-3">Размер</th>
-                                <th class="p-3 pr-4 text-right">Действие</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-700/60 font-mono">
-                            <template x-for="(sec, index) in parsedSections" :key="index">
-                                <tr @click="selectSection(index)"
-                                    :class="selectedSectionIndex === index ? 'bg-emerald-600/10 border-l-2 border-emerald-500' : 'hover:bg-slate-700/30 cursor-pointer'"
-                                    class="transition">
-                                    <td class="p-3 pl-4 font-semibold text-slate-200" x-text="sec.name || '(unnamed)'"></td>
-                                    <td class="p-3 text-slate-400" x-text="sec.sh_type_name"></td>
-                                    <td class="p-3 text-slate-500" x-text="'0x' + sec.sh_addr.toString(16).toUpperCase()"></td>
-                                    <td class="p-3 text-slate-500" x-text="'0x' + sec.sh_offset.toString(16).toUpperCase()"></td>
-                                    <td class="p-3 text-slate-500" x-text="sec.sh_size"></td>
-                                    <td class="p-3 pr-4 text-right">
-                                        <button class="text-xs text-slate-400 hover:text-emerald-400 bg-slate-900/40 hover:bg-slate-900 px-2 py-1 rounded border border-slate-700 transition">
-                                            <i class="fas fa-edit mr-1"></i>
-                                        </button>
-                                    </td>
+                            <template x-for="sec in parsedSections" :key="sec.name">
+                                <tr class="hover:bg-slate-700/30">
+                                    <td class="p-3 pl-4 text-slate-200 font-semibold" x-text="sec.name"></td>
+                                    <td class="p-3 text-slate-400" x-text="sec.typeDesc"></td>
+                                    <td class="p-3 text-slate-500" x-text="'0x'+sec.addr.toString(16).toUpperCase()"></td>
+                                    <td class="p-3 text-slate-500" x-text="'0x'+sec.offset.toString(16).toUpperCase()"></td>
+                                    <td class="p-3 text-slate-500" x-text="sec.size"></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -205,33 +196,40 @@
             </div>
         </div>
 
-        <!-- ПРАВАЯ КОЛОНКА: ИНСПЕКТОР ПОЛЯ -->
+        <!-- ПРАВАЯ КОЛОНКА: ИНСПЕКТОР -->
         <div class="lg:col-span-1">
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-xl sticky top-6">
-                <h3 class="text-lg font-bold border-b border-slate-700 pb-2 mb-4 flex items-center gap-2">
+                <h3 class="text-sm font-bold uppercase tracking-wider border-b border-slate-700 pb-3 mb-4 flex items-center gap-2 text-slate-300">
                     <i class="fas fa-sliders-h text-indigo-400"></i> Инспектор поля
                 </h3>
-
-                <!-- Инспектор заголовка ELF Header -->
-                <div x-show="selectedFieldKey !== null">
-                    <p class="text-xs text-slate-400 mb-2">Поле заголовка</p>
+                <!-- Ничего не выбрано -->
+                <div x-show="!selectedFieldKey" class="text-center py-8 text-slate-500">
+                    <i class="fas fa-mouse-pointer text-xl mb-2 block text-slate-600"></i>
+                    <p class="text-xs">Кликните по строке в таблицах слева, чтобы редактировать значение.</p>
+                </div>
+                <!-- Поле выбрано -->
+                <div x-show="selectedFieldKey" x-transition>
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-tight mb-1">Поле</label>
+                        <div class="text-sm font-mono text-slate-200" x-text="selectedFieldKey"></div>
+                    </div>
                     <div class="space-y-3">
                         <div>
-                            <span class="text-xs text-slate-500">Смещение: </span>
+                            <span class="text-xs text-slate-500">Смещение в файле: </span>
                             <span class="text-xs font-mono text-slate-300" x-text="'0x' + selectedFieldData?.offset?.toString(16).toUpperCase()"></span>
                         </div>
                         <div x-show="selectedFieldData?.hasDictionary">
-                            <label class="text-xs text-slate-400 block mb-1">Значение:</label>
-                            <select x-model.number="formValue" @change="updateHeaderFieldValue()"
+                            <label class="text-xs text-slate-400 block mb-1">Значение из справочника:</label>
+                            <select x-model.number="formValue" @change="updateFieldValue()"
                                     class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm font-mono text-slate-200">
-                                <template x-for="(text, val) in dictionaries[selectedFieldKey]" :key="val">
+                                <template x-for="(text, val) in getCurrentDictionary()" :key="val">
                                     <option :value="Number(val)" x-text="text" :selected="val == formValue"></option>
                                 </template>
                             </select>
                         </div>
                         <div x-show="!selectedFieldData?.hasDictionary">
                             <label class="text-xs text-slate-400 block mb-1">Числовое значение:</label>
-                            <input type="number" x-model.number="formValue" @input="updateHeaderFieldValue()"
+                            <input type="number" x-model.number="formValue" @input="updateFieldValue()"
                                    class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm font-mono text-indigo-300">
                         </div>
                     </div>
@@ -239,71 +237,40 @@
                         Закрыть инспектор
                     </button>
                 </div>
-
-                <!-- Инспектор секции -->
-                <div x-show="selectedSectionIndex !== null">
-                    <p class="text-xs text-slate-400 mb-2">Секция</p>
-                    <div class="space-y-3">
-                        <div>
-                            <span class="text-xs text-slate-500">Имя: </span>
-                            <span class="text-xs font-mono text-slate-300" x-text="parsedSections[selectedSectionIndex]?.name"></span>
-                        </div>
-                        <div>
-                            <label class="text-xs text-slate-400 block mb-1">Тип секции (sh_type):</label>
-                            <select x-model.number="sectionFormType" @change="updateSectionType()"
-                                    class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs font-mono text-slate-200">
-                                <template x-for="(text, val) in dictionaries.sh_type" :key="val">
-                                    <option :value="Number(val)" x-text="text" :selected="val == sectionFormType"></option>
-                                </template>
-                            </select>
-                        </div>
-                    </div>
-                    <button @click="resetSelection()" class="w-full mt-4 bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-lg text-xs font-semibold transition">
-                        Закрыть инспектор
-                    </button>
-                </div>
-
-                <!-- Пустой инспектор -->
-                <div x-show="selectedFieldKey === null && selectedSectionIndex === null">
-                    <p class="text-xs text-slate-500 text-center py-4">Кликните на строку в таблицах слева, чтобы редактировать поле.</p>
-                </div>
             </div>
         </div>
     </main>
 
     <script>
-        function elfAnalyzer() {
+        function binaryAnalyzer() {
             return {
                 fileLoaded: false,
                 fileName: '',
                 fileBuffer: null,
+                fileFormat: '',   // 'ELF' или 'PE'
                 is64Bit: true,
                 isLittleEndian: true,
 
-                // Инспектор заголовка
                 selectedFieldKey: null,
                 selectedFieldData: null,
                 formValue: 0,
-
-                // Инспектор секций
-                selectedSectionIndex: null,
-                sectionFormType: 0,
 
                 parsedHeader: {},
                 programHeaders: [],
                 parsedSections: [],
 
+                // Объединённые словари
                 dictionaries: {
-                    e_ident_class: { 0: "ELFCLASSNONE", 1: "ELFCLASS32 (32-бит)", 2: "ELFCLASS64 (64-бит)" },
-                    e_ident_data: { 0: "ELFDATANONE", 1: "ELFDATA2LSB (Little-Endian)", 2: "ELFDATA2MSB (Big-Endian)" },
-                    e_ident_version: { 0: "EV_NONE", 1: "EV_CURRENT" },
-                    e_ident_osabi: { 0: "System V", 3: "Linux", 6: "Solaris", 9: "FreeBSD" },
-                    e_type: { 0: "ET_NONE", 1: "ET_REL", 2: "ET_EXEC", 3: "ET_DYN", 4: "ET_CORE" },
-                    e_machine: { 0: "EM_NONE", 3: "EM_386", 40: "EM_ARM", 62: "EM_X86_64", 183: "EM_AARCH64", 243: "EM_RISCV" },
-                    sh_type: {
-                        0: "SHT_NULL", 1: "SHT_PROGBITS", 2: "SHT_SYMTAB", 3: "SHT_STRTAB",
-                        4: "SHT_RELA", 5: "SHT_HASH", 6: "SHT_DYNAMIC", 7: "SHT_NOTE",
-                        8: "SHT_NOBITS", 9: "SHT_REL", 11: "SHT_DYNSYM"
+                    ELF: {
+                        e_ident_class: {1:"ELFCLASS32",2:"ELFCLASS64"},
+                        e_ident_data: {1:"Little-Endian",2:"Big-Endian"},
+                        e_type: {0:"ET_NONE",1:"ET_REL",2:"ET_EXEC",3:"ET_DYN",4:"ET_CORE"},
+                        e_machine: {3:"i386",40:"ARM",62:"x86-64",183:"AArch64",243:"RISC-V"}
+                    },
+                    PE: {
+                        Machine: {0x014c:"I386 (32-bit)",0x8664:"AMD64 (64-bit)",0xaa64:"ARM64"},
+                        Magic: {0x010b:"PE32",0x020b:"PE32+ (64-bit)"},
+                        Subsystem: {2:"GUI",3:"Console",1:"Native"}
                     }
                 },
 
@@ -315,47 +282,54 @@
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         this.fileBuffer = e.target.result;
-                        this.parseElf();
+                        this.detectAndParse();
                     };
                     reader.readAsArrayBuffer(file);
                 },
 
-                parseElf() {
+                detectAndParse() {
                     const view = new DataView(this.fileBuffer);
-                    if (view.getUint32(0, false) !== 0x7F454C46) {
-                        alert("Файл не является ELF!");
-                        this.fileLoaded = false;
+                    if (view.byteLength < 64) {
+                        alert("Файл слишком мал.");
                         return;
                     }
+                    const magic32 = view.getUint32(0, false);
+                    const magic16 = view.getUint16(0, false);
+                    if (magic32 === 0x7F454C46) {
+                        this.fileFormat = 'ELF';
+                        this.parseElf(view);
+                    } else if (magic16 === 0x5A4D) {   // 'MZ'
+                        this.fileFormat = 'PE';
+                        this.parsePe(view);
+                    } else {
+                        alert("Неизвестный формат файла.");
+                        this.fileLoaded = false;
+                    }
+                },
 
+                // --------------- ELF ---------------
+                parseElf(view) {
                     const classByte = view.getUint8(4);
                     const dataByte = view.getUint8(5);
                     this.is64Bit = (classByte === 2);
                     this.isLittleEndian = (dataByte === 1);
                     const le = this.isLittleEndian;
 
-                    // ELF Header
                     let hdr = {
                         e_ident_class:   { offset: 4,  size: 1, hasDictionary: true,  value: classByte },
                         e_ident_data:    { offset: 5,  size: 1, hasDictionary: true,  value: dataByte },
-                        e_ident_version: { offset: 6,  size: 1, hasDictionary: true,  value: view.getUint8(6) },
-                        e_ident_osabi:   { offset: 7,  size: 1, hasDictionary: true,  value: view.getUint8(7) },
                         e_type:          { offset: 16, size: 2, hasDictionary: true,  value: view.getUint16(16, le) },
                         e_machine:       { offset: 18, size: 2, hasDictionary: true,  value: view.getUint16(18, le) },
-                        e_version:       { offset: 20, size: 4, hasDictionary: false, value: view.getUint32(20, le) }
                     };
-
                     if (this.is64Bit) {
                         Object.assign(hdr, {
                             e_entry:  { offset: 24, size: 8, hasDictionary: false, value: Number(view.getBigUint64(24, le)) },
                             e_phoff:  { offset: 32, size: 8, hasDictionary: false, value: Number(view.getBigUint64(32, le)) },
                             e_shoff:  { offset: 40, size: 8, hasDictionary: false, value: Number(view.getBigUint64(40, le)) },
-                            e_flags:  { offset: 48, size: 4, hasDictionary: false, value: view.getUint32(48, le) },
-                            e_ehsize: { offset: 52, size: 2, hasDictionary: false, value: view.getUint16(52, le) },
+                            e_shnum:  { offset: 60, size: 2, hasDictionary: false, value: view.getUint16(60, le) },
+                            e_phnum:  { offset: 56, size: 2, hasDictionary: false, value: view.getUint16(56, le) },
                             e_phentsize: { offset: 54, size: 2, hasDictionary: false, value: view.getUint16(54, le) },
-                            e_phnum:     { offset: 56, size: 2, hasDictionary: false, value: view.getUint16(56, le) },
                             e_shentsize: { offset: 58, size: 2, hasDictionary: false, value: view.getUint16(58, le) },
-                            e_shnum:     { offset: 60, size: 2, hasDictionary: false, value: view.getUint16(60, le) },
                             e_shstrndx:  { offset: 62, size: 2, hasDictionary: false, value: view.getUint16(62, le) }
                         });
                     } else {
@@ -363,149 +337,221 @@
                             e_entry:  { offset: 24, size: 4, hasDictionary: false, value: view.getUint32(24, le) },
                             e_phoff:  { offset: 28, size: 4, hasDictionary: false, value: view.getUint32(28, le) },
                             e_shoff:  { offset: 32, size: 4, hasDictionary: false, value: view.getUint32(32, le) },
-                            e_flags:  { offset: 36, size: 4, hasDictionary: false, value: view.getUint32(36, le) },
-                            e_ehsize: { offset: 40, size: 2, hasDictionary: false, value: view.getUint16(40, le) },
+                            e_shnum:  { offset: 48, size: 2, hasDictionary: false, value: view.getUint16(48, le) },
+                            e_phnum:  { offset: 44, size: 2, hasDictionary: false, value: view.getUint16(44, le) },
                             e_phentsize: { offset: 42, size: 2, hasDictionary: false, value: view.getUint16(42, le) },
-                            e_phnum:     { offset: 44, size: 2, hasDictionary: false, value: view.getUint16(44, le) },
                             e_shentsize: { offset: 46, size: 2, hasDictionary: false, value: view.getUint16(46, le) },
-                            e_shnum:     { offset: 48, size: 2, hasDictionary: false, value: view.getUint16(48, le) },
                             e_shstrndx:  { offset: 50, size: 2, hasDictionary: false, value: view.getUint16(50, le) }
                         });
                     }
                     this.parsedHeader = hdr;
-
-                    // Парсим Program Headers
-                    this.parseProgramHeaders(view, hdr);
-                    // Парсим Section Headers
-                    this.parseSectionHeaders(view, hdr);
-
+                    this.programHeaders = this.parseElfProgramHeaders(view, hdr);
+                    this.parsedSections = this.parseElfSections(view, hdr);
                     this.fileLoaded = true;
                 },
 
-                parseProgramHeaders(view, header) {
+                parseElfProgramHeaders(view, hdr) {
                     const le = this.isLittleEndian;
-                    const phoff = header.e_phoff.value;
-                    const phnum = header.e_phnum.value;
-                    const phentsize = header.e_phentsize.value;
-                    const typeNames = {
-                        0: "PT_NULL", 1: "PT_LOAD", 2: "PT_DYNAMIC", 3: "PT_INTERP",
-                        4: "PT_NOTE", 5: "PT_SHLIB", 6: "PT_PHDR", 7: "PT_TLS",
-                        0x6474e550: "PT_GNU_EH_FRAME", 0x6474e551: "PT_GNU_STACK", 0x6474e552: "PT_GNU_RELRO"
-                    };
-                    const pfNames = { 0: "---", 1: "--x", 2: "-w-", 3: "-wx", 4: "r--", 5: "r-x", 6: "rw-", 7: "rwx" };
-
-                    let headers = [];
-                    for (let i = 0; i < phnum; i++) {
-                        const off = phoff + i * phentsize;
+                    const phoff = hdr.e_phoff.value;
+                    const phnum = hdr.e_phnum.value;
+                    const phentsize = hdr.e_phentsize.value;
+                    if (!phoff || !phnum) return [];
+                    const typeNames = {1:"PT_LOAD",2:"PT_DYNAMIC",3:"PT_INTERP",4:"PT_NOTE",6:"PT_PHDR",7:"PT_TLS"};
+                    const pf = {0:"---",1:"--x",2:"-w-",3:"-wx",4:"r--",5:"r-x",6:"rw-",7:"rwx"};
+                    let arr = [];
+                    for (let i=0; i<phnum; i++) {
+                        const off = phoff + i*phentsize;
                         let p_type = view.getUint32(off, le);
-                        let p_flags = 0, p_offset = 0, p_vaddr = 0, p_filesz = 0, p_memsz = 0;
+                        let p_flags, p_offset, p_vaddr, p_filesz, p_memsz;
                         if (this.is64Bit) {
-                            p_flags = view.getUint32(off + 4, le);
-                            p_offset = Number(view.getBigUint64(off + 8, le));
-                            p_vaddr  = Number(view.getBigUint64(off + 16, le));
-                            p_filesz = Number(view.getBigUint64(off + 32, le));
-                            p_memsz  = Number(view.getBigUint64(off + 40, le));
+                            p_flags = view.getUint32(off+4, le);
+                            p_offset = Number(view.getBigUint64(off+8, le));
+                            p_vaddr  = Number(view.getBigUint64(off+16, le));
+                            p_filesz = Number(view.getBigUint64(off+32, le));
+                            p_memsz  = Number(view.getBigUint64(off+40, le));
                         } else {
-                            p_offset = view.getUint32(off + 4, le);
-                            p_vaddr  = view.getUint32(off + 8, le);
-                            p_filesz = view.getUint32(off + 16, le);
-                            p_memsz  = view.getUint32(off + 20, le);
-                            p_flags  = view.getUint32(off + 24, le);
+                            p_offset = view.getUint32(off+4, le);
+                            p_vaddr  = view.getUint32(off+8, le);
+                            p_filesz = view.getUint32(off+16, le);
+                            p_memsz  = view.getUint32(off+20, le);
+                            p_flags  = view.getUint32(off+24, le);
                         }
-                        headers.push({
+                        arr.push({
                             type: p_type,
                             typeName: typeNames[p_type] || `0x${p_type.toString(16)}`,
-                            flags: p_flags,
-                            flagsStr: pfNames[p_flags] || "???",
-                            offset: p_offset,
-                            vaddr: p_vaddr,
-                            filesz: p_filesz,
-                            memsz: p_memsz
+                            offset: p_offset, vaddr: p_vaddr,
+                            filesz: p_filesz, memsz: p_memsz,
+                            flags: p_flags, flagsStr: pf[p_flags] || '???'
                         });
                     }
-                    this.programHeaders = headers;
+                    return arr;
                 },
 
-                parseSectionHeaders(view, header) {
+                parseElfSections(view, hdr) {
                     const le = this.isLittleEndian;
-                    const shoff = header.e_shoff.value;
-                    const shnum = header.e_shnum.value;
-                    const shentsize = header.e_shentsize.value;
-                    const shstrndx = header.e_shstrndx.value;
+                    const shoff = hdr.e_shoff.value;
+                    const shnum = hdr.e_shnum.value;
+                    const shentsize = hdr.e_shentsize.value;
+                    const shstrndx = hdr.e_shstrndx.value;
+                    if (!shoff || !shnum) return [];
 
-                    if (shoff === 0 || shnum === 0) {
-                        this.parsedSections = [];
-                        return;
-                    }
-
-                    // Чтение строковой таблицы имён секций
                     let strOff = 0, strSize = 0;
                     const strEnt = shoff + shstrndx * shentsize;
                     if (this.is64Bit) {
-                        strOff = Number(view.getBigUint64(strEnt + 24, le));
-                        strSize = Number(view.getBigUint64(strEnt + 32, le));
+                        strOff = Number(view.getBigUint64(strEnt+24, le));
+                        strSize = Number(view.getBigUint64(strEnt+32, le));
                     } else {
-                        strOff = view.getUint32(strEnt + 16, le);
-                        strSize = view.getUint32(strEnt + 20, le);
+                        strOff = view.getUint32(strEnt+16, le);
+                        strSize = view.getUint32(strEnt+20, le);
                     }
-
                     const getStr = (nameOff) => {
-                        if (!strOff || nameOff >= strSize) return "";
-                        let s = "";
-                        let pos = strOff + nameOff;
-                        while (pos < view.byteLength) {
-                            const b = view.getUint8(pos);
-                            if (b === 0) break;
-                            s += String.fromCharCode(b);
-                            pos++;
-                        }
+                        if (!strOff || nameOff>=strSize) return '';
+                        let s=''; let pos=strOff+nameOff;
+                        while (pos<view.byteLength) { const b=view.getUint8(pos); if(b===0) break; s+=String.fromCharCode(b); pos++; }
                         return s;
                     };
-
-                    let sections = [];
-                    for (let i = 0; i < shnum; i++) {
-                        const off = shoff + i * shentsize;
+                    let secs = [];
+                    for (let i=0; i<shnum; i++) {
+                        const off = shoff + i*shentsize;
                         const sh_name = view.getUint32(off, le);
-                        const sh_type = view.getUint32(off + 4, le);
-                        let sh_addr = 0, sh_offset = 0, sh_size = 0;
+                        const sh_type = view.getUint32(off+4, le);
+                        let sh_addr, sh_offset, sh_size;
                         if (this.is64Bit) {
-                            sh_addr = Number(view.getBigUint64(off + 16, le));
-                            sh_offset = Number(view.getBigUint64(off + 24, le));
-                            sh_size = Number(view.getBigUint64(off + 32, le));
+                            sh_addr = Number(view.getBigUint64(off+16, le));
+                            sh_offset = Number(view.getBigUint64(off+24, le));
+                            sh_size = Number(view.getBigUint64(off+32, le));
                         } else {
-                            sh_addr = view.getUint32(off + 12, le);
-                            sh_offset = view.getUint32(off + 16, le);
-                            sh_size = view.getUint32(off + 20, le);
+                            sh_addr = view.getUint32(off+12, le);
+                            sh_offset = view.getUint32(off+16, le);
+                            sh_size = view.getUint32(off+20, le);
                         }
-                        sections.push({
+                        secs.push({
                             name: getStr(sh_name),
-                            sh_type: sh_type,
-                            sh_type_name: this.dictionaries.sh_type[sh_type] || `0x${sh_type.toString(16)}`,
-                            sh_addr: sh_addr,
-                            sh_offset: sh_offset,
-                            sh_size: sh_size,
-                            structOffset: off  // для будущего редактирования
+                            typeDesc: this.dictionaries.ELF.sh_type ? (this.dictionaries.ELF.sh_type[sh_type] || '0x'+sh_type.toString(16)) : sh_type,
+                            addr: sh_addr, offset: sh_offset, size: sh_size,
+                            sh_type: sh_type, structOffset: off
                         });
                     }
-                    this.parsedSections = sections;
+                    return secs;
                 },
 
+                // --------------- PE ---------------
+                parsePe(view) {
+                    this.isLittleEndian = true; // PE всегда LE
+                    const dos_magic = view.getUint16(0, true);
+                    const e_lfanew = view.getUint32(0x3C, true);
+                    const peSig = view.getUint32(e_lfanew, true);
+                    if (peSig !== 0x00004550) { alert("Неверная PE сигнатура"); return; }
+
+                    const coffOff = e_lfanew + 4;
+                    const machine = view.getUint16(coffOff, true);
+                    const numSections = view.getUint16(coffOff+2, true);
+                    const sizeOfOptionalHeader = view.getUint16(coffOff+16, true);
+                    const characteristics = view.getUint16(coffOff+18, true);
+
+                    const optOff = coffOff + 20;
+                    const magic = view.getUint16(optOff, true);
+                    this.is64Bit = (magic === 0x020b);
+
+                    // Собираем ключевые поля в parsedHeader
+                    let peHdr = {
+                        "DOS_Magic": { offset: 0, size: 2, hasDictionary: false, value: dos_magic },
+                        "PE_Offset (e_lfanew)": { offset: 0x3C, size: 4, hasDictionary: false, value: e_lfanew },
+                        "PE_Signature": { offset: e_lfanew, size: 4, hasDictionary: false, value: peSig },
+                        "Machine": { offset: coffOff, size: 2, hasDictionary: true, value: machine },
+                        "NumberOfSections": { offset: coffOff+2, size: 2, hasDictionary: false, value: numSections },
+                        "SizeOfOptionalHeader": { offset: coffOff+16, size: 2, hasDictionary: false, value: sizeOfOptionalHeader },
+                        "Characteristics": { offset: coffOff+18, size: 2, hasDictionary: false, value: characteristics },
+                        "Magic": { offset: optOff, size: 2, hasDictionary: true, value: magic },
+                        "AddressOfEntryPoint": { offset: optOff+16, size: 4, hasDictionary: false, value: view.getUint32(optOff+16, true) },
+                    };
+                    // ImageBase и дополнительные поля в зависимости от разрядности
+                    if (this.is64Bit) {
+                        Object.assign(peHdr, {
+                            "ImageBase": { offset: optOff+24, size: 8, hasDictionary: false, value: Number(view.getBigUint64(optOff+24, true)) },
+                            "SectionAlignment": { offset: optOff+32, size: 4, hasDictionary: false, value: view.getUint32(optOff+32, true) },
+                            "FileAlignment": { offset: optOff+36, size: 4, hasDictionary: false, value: view.getUint32(optOff+36, true) },
+                            "SizeOfImage": { offset: optOff+56, size: 4, hasDictionary: false, value: view.getUint32(optOff+56, true) },
+                            "SizeOfHeaders": { offset: optOff+60, size: 4, hasDictionary: false, value: view.getUint32(optOff+60, true) },
+                            "Subsystem": { offset: optOff+68, size: 2, hasDictionary: true, value: view.getUint16(optOff+68, true) },
+                        });
+                    } else {
+                        Object.assign(peHdr, {
+                            "ImageBase": { offset: optOff+28, size: 4, hasDictionary: false, value: view.getUint32(optOff+28, true) },
+                            "SectionAlignment": { offset: optOff+32, size: 4, hasDictionary: false, value: view.getUint32(optOff+32, true) },
+                            "FileAlignment": { offset: optOff+36, size: 4, hasDictionary: false, value: view.getUint32(optOff+36, true) },
+                            "SizeOfImage": { offset: optOff+56, size: 4, hasDictionary: false, value: view.getUint32(optOff+56, true) },
+                            "SizeOfHeaders": { offset: optOff+60, size: 4, hasDictionary: false, value: view.getUint32(optOff+60, true) },
+                            "Subsystem": { offset: optOff+68, size: 2, hasDictionary: true, value: view.getUint16(optOff+68, true) },
+                        });
+                    }
+                    // Определяем EXE/DLL по Characteristics
+                    const isDll = (characteristics & 0x2000) !== 0;
+                    peHdr["FileType"] = { offset: 0, size: 0, hasDictionary: false, value: isDll ? "DLL" : "EXE" };
+                    this.parsedHeader = peHdr;
+                    this.programHeaders = [];   // в PE нет Program Headers
+                    this.parsedSections = this.parsePeSections(view, e_lfanew, coffOff, sizeOfOptionalHeader, numSections);
+                    this.fileLoaded = true;
+                },
+
+                parsePeSections(view, e_lfanew, coffOff, sizeOfOptionalHeader, numSections) {
+                    const sectionStart = coffOff + 20 + sizeOfOptionalHeader;
+                    const secs = [];
+                    for (let i = 0; i < numSections; i++) {
+                        const off = sectionStart + i * 40;
+                        // Name (8 bytes)
+                        let name = '';
+                        for (let j=0; j<8; j++) {
+                            const ch = view.getUint8(off+j);
+                            if (ch === 0) break;
+                            name += String.fromCharCode(ch);
+                        }
+                        name = name.trim();
+                        const virtualSize = view.getUint32(off+8, true);
+                        const virtualAddress = view.getUint32(off+12, true);
+                        const sizeOfRawData = view.getUint32(off+16, true);
+                        const pointerToRawData = view.getUint32(off+20, true);
+                        const characteristics = view.getUint32(off+36, true);
+                        const flags = [];
+                        if (characteristics & 0x20000000) flags.push('X');
+                        if (characteristics & 0x40000000) flags.push('R');
+                        if (characteristics & 0x80000000) flags.push('W');
+                        const desc = flags.length ? flags.join('') : '---';
+                        secs.push({
+                            name: name || '(unnamed)',
+                            typeDesc: `0x${characteristics.toString(16).toUpperCase()} (${desc})`,
+                            addr: virtualAddress,
+                            offset: pointerToRawData,
+                            size: sizeOfRawData || virtualSize,
+                            characteristics: characteristics
+                        });
+                    }
+                    return secs;
+                },
+
+                // --------------- Общие методы ---------------
                 getHumanReadableValue(fieldName, rawValue) {
-                    const dict = this.dictionaries[fieldName];
+                    const dict = this.getCurrentDictionary();
                     if (dict && dict[rawValue] !== undefined) return dict[rawValue];
-                    if (fieldName.startsWith('e_') && (fieldName.endsWith('off') || fieldName === 'e_entry'))
+                    if (typeof rawValue === 'number' && rawValue > 0xFFFF) {
                         return '0x' + rawValue.toString(16).toUpperCase();
+                    }
                     return rawValue;
                 },
 
+                getCurrentDictionary() {
+                    if (!this.selectedFieldKey || !this.fileFormat) return null;
+                    return this.dictionaries[this.fileFormat]?.[this.selectedFieldKey] || null;
+                },
+
                 selectHeaderField(key, field) {
-                    this.resetSelection();
+                    if (field.size === 0) return;  // виртуальные поля не редактируются
                     this.selectedFieldKey = key;
                     this.selectedFieldData = field;
                     this.formValue = field.value;
                 },
 
-                updateHeaderFieldValue() {
+                updateFieldValue() {
                     if (!this.selectedFieldKey || !this.fileBuffer) return;
                     const view = new DataView(this.fileBuffer);
                     const { offset, size } = this.selectedFieldData;
@@ -517,33 +563,16 @@
                     else if (size === 4) view.setUint32(offset, val, le);
                     else if (size === 8) view.setBigUint64(offset, BigInt(val), le);
 
-                    this.parsedHeader[this.selectedFieldKey].value = val;
-                    // При смене разрядности или endianness – перепарсим всё
-                    if (this.selectedFieldKey === 'e_ident_class' || this.selectedFieldKey === 'e_ident_data') {
-                        this.parseElf();
+                    this.selectedFieldData.value = val;
+                    // При изменении критичных полей перепаршиваем всё
+                    if (['e_ident_class','e_ident_data','Magic','Machine'].includes(this.selectedFieldKey)) {
+                        this.detectAndParse();
                     }
-                },
-
-                selectSection(index) {
-                    this.resetSelection();
-                    this.selectedSectionIndex = index;
-                    this.sectionFormType = this.parsedSections[index].sh_type;
-                },
-
-                updateSectionType() {
-                    if (this.selectedSectionIndex === null || !this.fileBuffer) return;
-                    const view = new DataView(this.fileBuffer);
-                    const sec = this.parsedSections[this.selectedSectionIndex];
-                    const off = sec.structOffset + 4; // sh_type находится по смещению 4 от начала структуры
-                    view.setUint32(off, this.sectionFormType, this.isLittleEndian);
-                    sec.sh_type = this.sectionFormType;
-                    sec.sh_type_name = this.dictionaries.sh_type[this.sectionFormType] || `0x${this.sectionFormType.toString(16)}`;
                 },
 
                 resetSelection() {
                     this.selectedFieldKey = null;
                     this.selectedFieldData = null;
-                    this.selectedSectionIndex = null;
                 },
 
                 downloadFile() {
