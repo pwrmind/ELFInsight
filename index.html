@@ -8,12 +8,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Google Fonts -->
+    <!-- Font Awesome с fallback -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          onerror="document.querySelectorAll('.fa').forEach(el=>el.style.display='none')">
+    <!-- Google Fonts с fallback -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"
+          onerror="document.body.style.fontFamily='monospace'">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -128,7 +130,7 @@
             <div x-show="fileLoaded && fileFormat === 'ELF' && programHeaders.length" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-slate-750 p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 class="text-md font-bold tracking-wide text-slate-200 flex items-center gap-2">
-                        <i class="fas fa-layer-group text-indigo-400"></i> 2. Program Headers (только ELF)
+                        <i class="fas fa-layer-group text-indigo-400"></i> 2. Program Headers
                     </h2>
                     <span class="text-xs font-mono text-slate-400" x-text="'Сегментов: ' + programHeaders.length"></span>
                 </div>
@@ -139,8 +141,8 @@
                                 <th class="p-3 pl-4">Тип</th>
                                 <th class="p-3">Смещение</th>
                                 <th class="p-3">Вирт. адрес</th>
-                                <th class="p-3">Файловый размер</th>
-                                <th class="p-3">Память</th>
+                                <th class="p-3">Размер в файле</th>
+                                <th class="p-3">Размер в памяти</th>
                                 <th class="p-3">Флаги</th>
                             </tr>
                         </thead>
@@ -152,7 +154,11 @@
                                     <td class="p-3 text-slate-400" x-text="'0x'+ph.vaddr.toString(16).toUpperCase()"></td>
                                     <td class="p-3 text-slate-400" x-text="ph.filesz"></td>
                                     <td class="p-3 text-slate-400" x-text="ph.memsz"></td>
-                                    <td class="p-3"><span class="text-xs font-mono px-2 py-0.5 rounded" :class="ph.flagsStr==='r-x'?'bg-blue-900/40 text-blue-300':(ph.flagsStr==='rw-'?'bg-yellow-900/40 text-yellow-300':'bg-slate-700 text-slate-400')" x-text="ph.flagsStr"></span></td>
+                                    <td class="p-3">
+                                        <span class="text-xs font-mono px-2 py-0.5 rounded"
+                                              :class="ph.flagsStr==='r-x'?'bg-blue-900/40 text-blue-300':(ph.flagsStr==='rw-'?'bg-yellow-900/40 text-yellow-300':'bg-slate-700 text-slate-400')"
+                                              x-text="ph.flagsStr"></span>
+                                    </td>
                                 </tr>
                             </template>
                         </tbody>
@@ -265,7 +271,12 @@
                         e_ident_class: {1:"ELFCLASS32",2:"ELFCLASS64"},
                         e_ident_data: {1:"Little-Endian",2:"Big-Endian"},
                         e_type: {0:"ET_NONE",1:"ET_REL",2:"ET_EXEC",3:"ET_DYN",4:"ET_CORE"},
-                        e_machine: {3:"i386",40:"ARM",62:"x86-64",183:"AArch64",243:"RISC-V"}
+                        e_machine: {3:"i386",40:"ARM",62:"x86-64",183:"AArch64",243:"RISC-V"},
+                        sh_type: {
+                            0:"SHT_NULL", 1:"SHT_PROGBITS", 2:"SHT_SYMTAB", 3:"SHT_STRTAB",
+                            4:"SHT_RELA", 5:"SHT_HASH", 6:"SHT_DYNAMIC", 7:"SHT_NOTE",
+                            8:"SHT_NOBITS", 9:"SHT_REL", 11:"SHT_DYNSYM"
+                        }
                     },
                     PE: {
                         Machine: {0x014c:"I386 (32-bit)",0x8664:"AMD64 (64-bit)",0xaa64:"ARM64"},
@@ -294,11 +305,11 @@
                         return;
                     }
                     const magic32 = view.getUint32(0, false);
-                    const magic16 = view.getUint16(0, false);
+                    const magic16 = view.getUint16(0, false);   // big-endian: читаем MZ как 0x4D5A
                     if (magic32 === 0x7F454C46) {
                         this.fileFormat = 'ELF';
                         this.parseElf(view);
-                    } else if (magic16 === 0x5A4D) {   // 'MZ'
+                    } else if (magic16 === 0x4D5A) {  // "MZ" (правильная проверка)
                         this.fileFormat = 'PE';
                         this.parsePe(view);
                     } else {
@@ -427,7 +438,7 @@
                         }
                         secs.push({
                             name: getStr(sh_name),
-                            typeDesc: this.dictionaries.ELF.sh_type ? (this.dictionaries.ELF.sh_type[sh_type] || '0x'+sh_type.toString(16)) : sh_type,
+                            typeDesc: this.dictionaries.ELF.sh_type?.[sh_type] || `0x${sh_type.toString(16)}`,
                             addr: sh_addr, offset: sh_offset, size: sh_size,
                             sh_type: sh_type, structOffset: off
                         });
@@ -453,7 +464,6 @@
                     const magic = view.getUint16(optOff, true);
                     this.is64Bit = (magic === 0x020b);
 
-                    // Собираем ключевые поля в parsedHeader
                     let peHdr = {
                         "DOS_Magic": { offset: 0, size: 2, hasDictionary: false, value: dos_magic },
                         "PE_Offset (e_lfanew)": { offset: 0x3C, size: 4, hasDictionary: false, value: e_lfanew },
@@ -465,7 +475,6 @@
                         "Magic": { offset: optOff, size: 2, hasDictionary: true, value: magic },
                         "AddressOfEntryPoint": { offset: optOff+16, size: 4, hasDictionary: false, value: view.getUint32(optOff+16, true) },
                     };
-                    // ImageBase и дополнительные поля в зависимости от разрядности
                     if (this.is64Bit) {
                         Object.assign(peHdr, {
                             "ImageBase": { offset: optOff+24, size: 8, hasDictionary: false, value: Number(view.getBigUint64(optOff+24, true)) },
@@ -485,7 +494,6 @@
                             "Subsystem": { offset: optOff+68, size: 2, hasDictionary: true, value: view.getUint16(optOff+68, true) },
                         });
                     }
-                    // Определяем EXE/DLL по Characteristics
                     const isDll = (characteristics & 0x2000) !== 0;
                     peHdr["FileType"] = { offset: 0, size: 0, hasDictionary: false, value: isDll ? "DLL" : "EXE" };
                     this.parsedHeader = peHdr;
