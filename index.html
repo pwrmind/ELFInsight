@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binary Insight Web</title>
+    <title>Binary Insight Pro – с базой знаний</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Alpine.js -->
@@ -24,6 +24,7 @@
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
         [x-cloak] { display: none !important; }
+        .tooltip-text { max-height: 200px; overflow-y: auto; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col" x-data="binaryAnalyzer()" x-cloak>
@@ -33,11 +34,11 @@
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <div class="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-                    <i class="fas fa-shield-halved text-xl text-white"></i>
+                    <i class="fas fa-book-open text-xl text-white"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Binary Insight Web</h1>
-                    <p class="text-xs text-slate-400 font-medium">Анализатор Linux ELF и Windows PE (EXE/DLL)</p>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Binary Insight Pro</h1>
+                    <p class="text-xs text-slate-400 font-medium">Интерактивный справочник‑редактор ELF и PE</p>
                 </div>
             </div>
             
@@ -78,10 +79,10 @@
                     <i class="fas fa-box-open text-3xl"></i>
                 </div>
                 <h3 class="text-lg font-medium text-slate-300 mb-1">Файл не выбран</h3>
-                <p class="text-sm text-slate-500 max-w-md mx-auto mb-5">Поддерживаются исполняемые файлы Linux (ELF, .o, .so) и Windows (PE, .exe, .dll).</p>
+                <p class="text-sm text-slate-500 max-w-md mx-auto mb-5">Поддерживаются ELF (Linux) и PE (Windows .exe/.dll). Нажмите на строку, чтобы увидеть объяснение поля.</p>
             </div>
 
-            <!-- СЛОЙ 1: ОСНОВНОЙ ЗАГОЛОВОК (ELF или PE) -->
+            <!-- СЛОЙ 1: ОСНОВНОЙ ЗАГОЛОВОК -->
             <div x-show="fileLoaded && parsedHeader && Object.keys(parsedHeader).length" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-slate-750 p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 class="text-md font-bold tracking-wide text-slate-200 flex items-center gap-2">
@@ -94,11 +95,11 @@
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-900/50 text-slate-400 border-b border-slate-700 font-medium">
-                                <th class="p-3 pl-4 w-20">Смещение</th>
+                                <th class="p-3 pl-4 w-24">Смещение</th>
                                 <th class="p-3 w-20">Размер</th>
                                 <th class="p-3">Имя поля</th>
                                 <th class="p-3">Значение</th>
-                                <th class="p-3 pr-4 text-right">Действие</th>
+                                <th class="p-3 pr-4 text-right">Инфо</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-700/60 font-mono">
@@ -107,7 +108,7 @@
                                     :class="selectedFieldKey === key ? 'bg-indigo-600/10 border-l-2 border-indigo-500' : 'hover:bg-slate-700/30 cursor-pointer'"
                                     class="transition">
                                     <td class="p-3 pl-4 text-slate-500" x-text="'0x' + field.offset.toString(16).toUpperCase().padStart(2,'0')"></td>
-                                    <td class="p-3 text-slate-500" x-text="field.size + ' б'"></td>
+                                    <td class="p-3 text-slate-500" x-text="field.size > 0 ? field.size + ' б' : 'расч.' "></td>
                                     <td class="p-3 font-semibold text-slate-300" x-text="key"></td>
                                     <td class="p-3">
                                         <span class="px-2 py-0.5 rounded text-xs font-medium"
@@ -115,9 +116,9 @@
                                               x-text="getHumanReadableValue(key, field.value)"></span>
                                     </td>
                                     <td class="p-3 pr-4 text-right">
-                                        <button class="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900/40 hover:bg-slate-900 px-2 py-1 rounded border border-slate-700 transition">
-                                            <i class="fas fa-edit mr-1"></i>
-                                        </button>
+                                        <span class="text-xs bg-slate-700/50 text-slate-400 px-2 py-1 rounded border border-slate-600/50">
+                                            <i class="fas fa-book-open mr-1"></i> Справка
+                                        </span>
                                     </td>
                                 </tr>
                             </template>
@@ -126,7 +127,7 @@
                 </div>
             </div>
 
-            <!-- СЛОЙ 2: PROGRAM HEADERS (только для ELF) -->
+            <!-- СЛОЙ 2: PROGRAM HEADERS (только ELF) -->
             <div x-show="fileLoaded && fileFormat === 'ELF' && programHeaders.length" x-transition class="bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-slate-750 p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 class="text-md font-bold tracking-wide text-slate-200 flex items-center gap-2">
@@ -202,45 +203,47 @@
             </div>
         </div>
 
-        <!-- ПРАВАЯ КОЛОНКА: ИНСПЕКТОР -->
+        <!-- ПРАВАЯ КОЛОНКА: БАЗА ЗНАНИЙ И ИНСПЕКТОР -->
         <div class="lg:col-span-1">
-            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-xl sticky top-6">
-                <h3 class="text-sm font-bold uppercase tracking-wider border-b border-slate-700 pb-3 mb-4 flex items-center gap-2 text-slate-300">
-                    <i class="fas fa-sliders-h text-indigo-400"></i> Инспектор поля
+            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-xl sticky top-6 space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider border-b border-slate-700 pb-3 flex items-center gap-2 text-slate-300">
+                    <i class="fas fa-info-circle text-indigo-400"></i> База знаний
                 </h3>
                 <!-- Ничего не выбрано -->
-                <div x-show="!selectedFieldKey" class="text-center py-8 text-slate-500">
-                    <i class="fas fa-mouse-pointer text-xl mb-2 block text-slate-600"></i>
-                    <p class="text-xs">Кликните по строке в таблицах слева, чтобы редактировать значение.</p>
+                <div x-show="!selectedFieldKey" class="text-center py-12 text-slate-500">
+                    <i class="fas fa-graduation-cap text-2xl mb-3 block text-slate-600"></i>
+                    <p class="text-xs leading-relaxed">Выберите любую строку структуры слева.<br>Здесь появится детальное описание назначения поля.</p>
                 </div>
                 <!-- Поле выбрано -->
-                <div x-show="selectedFieldKey" x-transition>
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-tight mb-1">Поле</label>
+                <div x-show="selectedFieldKey" x-transition class="space-y-4">
+                    <div>
+                        <span class="text-xs text-indigo-400 uppercase font-semibold">Поле</span>
                         <div class="text-sm font-mono text-slate-200" x-text="selectedFieldKey"></div>
                     </div>
-                    <div class="space-y-3">
-                        <div>
-                            <span class="text-xs text-slate-500">Смещение в файле: </span>
-                            <span class="text-xs font-mono text-slate-300" x-text="'0x' + selectedFieldData?.offset?.toString(16).toUpperCase()"></span>
-                        </div>
-                        <div x-show="selectedFieldData?.hasDictionary">
-                            <label class="text-xs text-slate-400 block mb-1">Значение из справочника:</label>
-                            <select x-model.number="formValue" @change="updateFieldValue()"
-                                    class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm font-mono text-slate-200">
-                                <template x-for="(text, val) in getCurrentDictionary()" :key="val">
-                                    <option :value="Number(val)" x-text="text" :selected="val == formValue"></option>
-                                </template>
-                            </select>
-                        </div>
-                        <div x-show="!selectedFieldData?.hasDictionary">
-                            <label class="text-xs text-slate-400 block mb-1">Числовое значение:</label>
-                            <input type="number" x-model.number="formValue" @input="updateFieldValue()"
-                                   class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm font-mono text-indigo-300">
-                        </div>
+                    <!-- ОПИСАНИЕ ПОЛЯ -->
+                    <div class="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                        <p class="text-xs text-slate-400 leading-relaxed tooltip-text" x-text="getFieldDescription()"></p>
                     </div>
-                    <button @click="resetSelection()" class="w-full mt-4 bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-lg text-xs font-semibold transition">
-                        Закрыть инспектор
+                    <div>
+                        <span class="text-xs text-slate-500">Смещение: </span>
+                        <span class="text-xs font-mono text-slate-300" x-text="'0x' + selectedFieldData?.offset?.toString(16).toUpperCase()"></span>
+                    </div>
+                    <div x-show="selectedFieldData?.hasDictionary">
+                        <label class="text-xs text-slate-400 block mb-1">Значение из справочника:</label>
+                        <select x-model.number="formValue" @change="updateFieldValue()"
+                                class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm font-mono text-slate-200">
+                            <template x-for="(text, val) in getCurrentDictionary()" :key="val">
+                                <option :value="Number(val)" x-text="text" :selected="val == formValue"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div x-show="!selectedFieldData?.hasDictionary && selectedFieldData?.size > 0">
+                        <label class="text-xs text-slate-400 block mb-1">Числовое значение:</label>
+                        <input type="number" x-model.number="formValue" @input="updateFieldValue()"
+                               class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm font-mono text-indigo-300">
+                    </div>
+                    <button @click="resetSelection()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-lg text-xs font-semibold transition">
+                        Закрыть справку
                     </button>
                 </div>
             </div>
@@ -265,23 +268,43 @@
                 programHeaders: [],
                 parsedSections: [],
 
-                // Объединённые словари
-                dictionaries: {
+                // База знаний с описаниями
+                metadata: {
                     ELF: {
-                        e_ident_class: {1:"ELFCLASS32",2:"ELFCLASS64"},
-                        e_ident_data: {1:"Little-Endian",2:"Big-Endian"},
-                        e_type: {0:"ET_NONE",1:"ET_REL",2:"ET_EXEC",3:"ET_DYN",4:"ET_CORE"},
-                        e_machine: {3:"i386",40:"ARM",62:"x86-64",183:"AArch64",243:"RISC-V"},
-                        sh_type: {
-                            0:"SHT_NULL", 1:"SHT_PROGBITS", 2:"SHT_SYMTAB", 3:"SHT_STRTAB",
-                            4:"SHT_RELA", 5:"SHT_HASH", 6:"SHT_DYNAMIC", 7:"SHT_NOTE",
-                            8:"SHT_NOBITS", 9:"SHT_REL", 11:"SHT_DYNSYM"
+                        descriptions: {
+                            e_ident_class: "Определяет разрядность файла. 1 (ELFCLASS32) — 32-битный формат с адресами до 4 ГБ. 2 (ELFCLASS64) — 64-битный формат, меняет смещения многих полей.",
+                            e_ident_data: "Порядок байт (Endianness). 1 — Little-Endian (Intel/AMD x86, ARM). 2 — Big-Endian (редко, старые RISC). Неверное значение сделает файл нечитаемым.",
+                            e_ident_version: "Версия спецификации ELF. Всегда должна быть равна 1 (EV_CURRENT).",
+                            e_ident_osabi: "Целевое системное окружение (ABI). Например, 3 — Linux, 9 — FreeBSD. Ядро использует это для корректных системных вызовов.",
+                            e_type: "Назначение файла: 1 — объектный файл (.o), 2 — исполняемый, 3 — динамическая библиотека (.so).",
+                            e_machine: "Архитектура процессора. 3 — x86, 62 — x86-64, 183 — ARM64. Код для одной архитектуры не запустится на другой.",
+                            e_entry: "Точка входа — виртуальный адрес, с которого начнётся выполнение программы после загрузки в память.",
+                            e_shnum: "Количество секций (например, .text, .data, .symtab). 0 — таблица секций отсутствует."
+                        },
+                        dictionaries: {
+                            e_ident_class: {1:"ELFCLASS32 (32-бит)",2:"ELFCLASS64 (64-бит)"},
+                            e_ident_data: {1:"Little-Endian",2:"Big-Endian"},
+                            e_ident_version: {1:"EV_CURRENT"},
+                            e_ident_osabi: {0:"System V",3:"Linux",9:"FreeBSD"},
+                            e_type: {1:"ET_REL",2:"ET_EXEC",3:"ET_DYN"},
+                            e_machine: {3:"i386",40:"ARM",62:"x86-64",183:"AArch64",243:"RISC-V"}
                         }
                     },
                     PE: {
-                        Machine: {0x014c:"I386 (32-bit)",0x8664:"AMD64 (64-bit)",0xaa64:"ARM64"},
-                        Magic: {0x010b:"PE32",0x020b:"PE32+ (64-bit)"},
-                        Subsystem: {2:"GUI",3:"Console",1:"Native"}
+                        descriptions: {
+                            "PE_Signature": "Сигнатура 'PE\\0\\0', подтверждающая, что это современный исполняемый файл Windows. Находится по смещению, указанному в DOS-заголовке.",
+                            "Machine": "Тип процессора: 0x014c — Intel x86, 0x8664 — x64, 0xaa64 — ARM64. Windows проверяет это поле, чтобы решить, сможет ли она выполнить код.",
+                            "NumberOfSections": "Количество секций (например, .text, .data, .rsrc). По этому числу загрузчик знает, сколько заголовков секций читать дальше.",
+                            "SizeOfOptionalHeader": "Размер Optional Header. Обычно 224 байта для 32-бит и 240 для 64-бит. Необходим для вычисления начала таблицы секций.",
+                            "Characteristics": "Флаги свойств файла. Бит 0x2000 указывает, что это DLL, а не EXE. Также могут быть флаги отладки, поддержки больших адресов и т.д.",
+                            "Magic": "Тип Optional Header: 0x010b — PE32 (32-бит), 0x020b — PE32+ (64-бит). Меняет размеры полей адресов.",
+                            "AddressOfEntryPoint": "Относительный виртуальный адрес (RVA) точки входа. Сюда Windows передаст управление после загрузки всех библиотек.",
+                            "FileType": "Вычисляемое поле на основе Characteristics. Показывает, чем является файл с точки зрения Windows: самостоятельной программой (EXE) или библиотекой (DLL)."
+                        },
+                        dictionaries: {
+                            Machine: {0x014c:"I386 (32-bit)",0x8664:"AMD64 (64-bit)",0xaa64:"ARM64"},
+                            Magic: {0x010b:"PE32",0x020b:"PE32+ (64-bit)"}
+                        }
                     }
                 },
 
@@ -300,16 +323,13 @@
 
                 detectAndParse() {
                     const view = new DataView(this.fileBuffer);
-                    if (view.byteLength < 64) {
-                        alert("Файл слишком мал.");
-                        return;
-                    }
+                    if (view.byteLength < 64) { alert("Файл слишком мал."); return; }
                     const magic32 = view.getUint32(0, false);
-                    const magic16 = view.getUint16(0, false);   // big-endian: читаем MZ как 0x4D5A
+                    const magic16 = view.getUint16(0, false);
                     if (magic32 === 0x7F454C46) {
                         this.fileFormat = 'ELF';
                         this.parseElf(view);
-                    } else if (magic16 === 0x4D5A) {  // "MZ" (правильная проверка)
+                    } else if (magic16 === 0x4D5A) {   // MZ – исправлено
                         this.fileFormat = 'PE';
                         this.parsePe(view);
                     } else {
@@ -318,7 +338,6 @@
                     }
                 },
 
-                // --------------- ELF ---------------
                 parseElf(view) {
                     const classByte = view.getUint8(4);
                     const dataByte = view.getUint8(5);
@@ -327,32 +346,34 @@
                     const le = this.isLittleEndian;
 
                     let hdr = {
-                        e_ident_class:   { offset: 4,  size: 1, hasDictionary: true,  value: classByte },
-                        e_ident_data:    { offset: 5,  size: 1, hasDictionary: true,  value: dataByte },
-                        e_type:          { offset: 16, size: 2, hasDictionary: true,  value: view.getUint16(16, le) },
-                        e_machine:       { offset: 18, size: 2, hasDictionary: true,  value: view.getUint16(18, le) },
+                        e_ident_class:   { offset: 4, size:1, hasDictionary:true, value:classByte },
+                        e_ident_data:    { offset: 5, size:1, hasDictionary:true, value:dataByte },
+                        e_ident_version: { offset: 6, size:1, hasDictionary:true, value:view.getUint8(6) },
+                        e_ident_osabi:   { offset: 7, size:1, hasDictionary:true, value:view.getUint8(7) },
+                        e_type:          { offset:16, size:2, hasDictionary:true, value:view.getUint16(16,le) },
+                        e_machine:       { offset:18, size:2, hasDictionary:true, value:view.getUint16(18,le) },
                     };
                     if (this.is64Bit) {
                         Object.assign(hdr, {
-                            e_entry:  { offset: 24, size: 8, hasDictionary: false, value: Number(view.getBigUint64(24, le)) },
-                            e_phoff:  { offset: 32, size: 8, hasDictionary: false, value: Number(view.getBigUint64(32, le)) },
-                            e_shoff:  { offset: 40, size: 8, hasDictionary: false, value: Number(view.getBigUint64(40, le)) },
-                            e_shnum:  { offset: 60, size: 2, hasDictionary: false, value: view.getUint16(60, le) },
-                            e_phnum:  { offset: 56, size: 2, hasDictionary: false, value: view.getUint16(56, le) },
-                            e_phentsize: { offset: 54, size: 2, hasDictionary: false, value: view.getUint16(54, le) },
-                            e_shentsize: { offset: 58, size: 2, hasDictionary: false, value: view.getUint16(58, le) },
-                            e_shstrndx:  { offset: 62, size: 2, hasDictionary: false, value: view.getUint16(62, le) }
+                            e_entry:  { offset:24, size:8, hasDictionary:false, value:Number(view.getBigUint64(24,le)) },
+                            e_phoff:  { offset:32, size:8, hasDictionary:false, value:Number(view.getBigUint64(32,le)) },
+                            e_shoff:  { offset:40, size:8, hasDictionary:false, value:Number(view.getBigUint64(40,le)) },
+                            e_shnum:  { offset:60, size:2, hasDictionary:false, value:view.getUint16(60,le) },
+                            e_phnum:  { offset:56, size:2, hasDictionary:false, value:view.getUint16(56,le) },
+                            e_phentsize: { offset:54, size:2, hasDictionary:false, value:view.getUint16(54,le) },
+                            e_shentsize: { offset:58, size:2, hasDictionary:false, value:view.getUint16(58,le) },
+                            e_shstrndx:  { offset:62, size:2, hasDictionary:false, value:view.getUint16(62,le) }
                         });
                     } else {
                         Object.assign(hdr, {
-                            e_entry:  { offset: 24, size: 4, hasDictionary: false, value: view.getUint32(24, le) },
-                            e_phoff:  { offset: 28, size: 4, hasDictionary: false, value: view.getUint32(28, le) },
-                            e_shoff:  { offset: 32, size: 4, hasDictionary: false, value: view.getUint32(32, le) },
-                            e_shnum:  { offset: 48, size: 2, hasDictionary: false, value: view.getUint16(48, le) },
-                            e_phnum:  { offset: 44, size: 2, hasDictionary: false, value: view.getUint16(44, le) },
-                            e_phentsize: { offset: 42, size: 2, hasDictionary: false, value: view.getUint16(42, le) },
-                            e_shentsize: { offset: 46, size: 2, hasDictionary: false, value: view.getUint16(46, le) },
-                            e_shstrndx:  { offset: 50, size: 2, hasDictionary: false, value: view.getUint16(50, le) }
+                            e_entry:  { offset:24, size:4, hasDictionary:false, value:view.getUint32(24,le) },
+                            e_phoff:  { offset:28, size:4, hasDictionary:false, value:view.getUint32(28,le) },
+                            e_shoff:  { offset:32, size:4, hasDictionary:false, value:view.getUint32(32,le) },
+                            e_shnum:  { offset:48, size:2, hasDictionary:false, value:view.getUint16(48,le) },
+                            e_phnum:  { offset:44, size:2, hasDictionary:false, value:view.getUint16(44,le) },
+                            e_phentsize: { offset:42, size:2, hasDictionary:false, value:view.getUint16(42,le) },
+                            e_shentsize: { offset:46, size:2, hasDictionary:false, value:view.getUint16(46,le) },
+                            e_shstrndx:  { offset:50, size:2, hasDictionary:false, value:view.getUint16(50,le) }
                         });
                     }
                     this.parsedHeader = hdr;
@@ -438,7 +459,7 @@
                         }
                         secs.push({
                             name: getStr(sh_name),
-                            typeDesc: this.dictionaries.ELF.sh_type?.[sh_type] || `0x${sh_type.toString(16)}`,
+                            typeDesc: this.metadata.ELF.dictionaries.sh_type?.[sh_type] || `0x${sh_type.toString(16)}`,
                             addr: sh_addr, offset: sh_offset, size: sh_size,
                             sh_type: sh_type, structOffset: off
                         });
@@ -446,68 +467,63 @@
                     return secs;
                 },
 
-                // --------------- PE ---------------
                 parsePe(view) {
-                    this.isLittleEndian = true; // PE всегда LE
-                    const dos_magic = view.getUint16(0, true);
+                    this.isLittleEndian = true;
                     const e_lfanew = view.getUint32(0x3C, true);
                     const peSig = view.getUint32(e_lfanew, true);
-                    if (peSig !== 0x00004550) { alert("Неверная PE сигнатура"); return; }
-
+                    if (peSig !== 0x00004550) { alert("Неверная PE сигнатура."); return; }
                     const coffOff = e_lfanew + 4;
                     const machine = view.getUint16(coffOff, true);
                     const numSections = view.getUint16(coffOff+2, true);
                     const sizeOfOptionalHeader = view.getUint16(coffOff+16, true);
                     const characteristics = view.getUint16(coffOff+18, true);
-
                     const optOff = coffOff + 20;
                     const magic = view.getUint16(optOff, true);
                     this.is64Bit = (magic === 0x020b);
 
                     let peHdr = {
-                        "DOS_Magic": { offset: 0, size: 2, hasDictionary: false, value: dos_magic },
-                        "PE_Offset (e_lfanew)": { offset: 0x3C, size: 4, hasDictionary: false, value: e_lfanew },
-                        "PE_Signature": { offset: e_lfanew, size: 4, hasDictionary: false, value: peSig },
-                        "Machine": { offset: coffOff, size: 2, hasDictionary: true, value: machine },
-                        "NumberOfSections": { offset: coffOff+2, size: 2, hasDictionary: false, value: numSections },
-                        "SizeOfOptionalHeader": { offset: coffOff+16, size: 2, hasDictionary: false, value: sizeOfOptionalHeader },
-                        "Characteristics": { offset: coffOff+18, size: 2, hasDictionary: false, value: characteristics },
-                        "Magic": { offset: optOff, size: 2, hasDictionary: true, value: magic },
-                        "AddressOfEntryPoint": { offset: optOff+16, size: 4, hasDictionary: false, value: view.getUint32(optOff+16, true) },
+                        "DOS_Magic": { offset:0, size:2, hasDictionary:false, value:view.getUint16(0,true) },
+                        "PE_Offset (e_lfanew)": { offset:0x3C, size:4, hasDictionary:false, value:e_lfanew },
+                        "PE_Signature": { offset:e_lfanew, size:4, hasDictionary:false, value:peSig },
+                        "Machine": { offset:coffOff, size:2, hasDictionary:true, value:machine },
+                        "NumberOfSections": { offset:coffOff+2, size:2, hasDictionary:false, value:numSections },
+                        "SizeOfOptionalHeader": { offset:coffOff+16, size:2, hasDictionary:false, value:sizeOfOptionalHeader },
+                        "Characteristics": { offset:coffOff+18, size:2, hasDictionary:false, value:characteristics },
+                        "Magic": { offset:optOff, size:2, hasDictionary:true, value:magic },
+                        "AddressOfEntryPoint": { offset:optOff+16, size:4, hasDictionary:false, value:view.getUint32(optOff+16,true) },
                     };
                     if (this.is64Bit) {
                         Object.assign(peHdr, {
-                            "ImageBase": { offset: optOff+24, size: 8, hasDictionary: false, value: Number(view.getBigUint64(optOff+24, true)) },
-                            "SectionAlignment": { offset: optOff+32, size: 4, hasDictionary: false, value: view.getUint32(optOff+32, true) },
-                            "FileAlignment": { offset: optOff+36, size: 4, hasDictionary: false, value: view.getUint32(optOff+36, true) },
-                            "SizeOfImage": { offset: optOff+56, size: 4, hasDictionary: false, value: view.getUint32(optOff+56, true) },
-                            "SizeOfHeaders": { offset: optOff+60, size: 4, hasDictionary: false, value: view.getUint32(optOff+60, true) },
-                            "Subsystem": { offset: optOff+68, size: 2, hasDictionary: true, value: view.getUint16(optOff+68, true) },
+                            "ImageBase": { offset:optOff+24, size:8, hasDictionary:false, value:Number(view.getBigUint64(optOff+24,true)) },
+                            "SectionAlignment": { offset:optOff+32, size:4, hasDictionary:false, value:view.getUint32(optOff+32,true) },
+                            "FileAlignment": { offset:optOff+36, size:4, hasDictionary:false, value:view.getUint32(optOff+36,true) },
+                            "SizeOfImage": { offset:optOff+56, size:4, hasDictionary:false, value:view.getUint32(optOff+56,true) },
+                            "SizeOfHeaders": { offset:optOff+60, size:4, hasDictionary:false, value:view.getUint32(optOff+60,true) },
+                            "Subsystem": { offset:optOff+68, size:2, hasDictionary:true, value:view.getUint16(optOff+68,true) },
                         });
                     } else {
                         Object.assign(peHdr, {
-                            "ImageBase": { offset: optOff+28, size: 4, hasDictionary: false, value: view.getUint32(optOff+28, true) },
-                            "SectionAlignment": { offset: optOff+32, size: 4, hasDictionary: false, value: view.getUint32(optOff+32, true) },
-                            "FileAlignment": { offset: optOff+36, size: 4, hasDictionary: false, value: view.getUint32(optOff+36, true) },
-                            "SizeOfImage": { offset: optOff+56, size: 4, hasDictionary: false, value: view.getUint32(optOff+56, true) },
-                            "SizeOfHeaders": { offset: optOff+60, size: 4, hasDictionary: false, value: view.getUint32(optOff+60, true) },
-                            "Subsystem": { offset: optOff+68, size: 2, hasDictionary: true, value: view.getUint16(optOff+68, true) },
+                            "ImageBase": { offset:optOff+28, size:4, hasDictionary:false, value:view.getUint32(optOff+28,true) },
+                            "SectionAlignment": { offset:optOff+32, size:4, hasDictionary:false, value:view.getUint32(optOff+32,true) },
+                            "FileAlignment": { offset:optOff+36, size:4, hasDictionary:false, value:view.getUint32(optOff+36,true) },
+                            "SizeOfImage": { offset:optOff+56, size:4, hasDictionary:false, value:view.getUint32(optOff+56,true) },
+                            "SizeOfHeaders": { offset:optOff+60, size:4, hasDictionary:false, value:view.getUint32(optOff+60,true) },
+                            "Subsystem": { offset:optOff+68, size:2, hasDictionary:true, value:view.getUint16(optOff+68,true) },
                         });
                     }
                     const isDll = (characteristics & 0x2000) !== 0;
-                    peHdr["FileType"] = { offset: 0, size: 0, hasDictionary: false, value: isDll ? "DLL" : "EXE" };
+                    peHdr["FileType"] = { offset:0, size:0, hasDictionary:false, value: isDll ? "DLL" : "EXE" };
                     this.parsedHeader = peHdr;
-                    this.programHeaders = [];   // в PE нет Program Headers
-                    this.parsedSections = this.parsePeSections(view, e_lfanew, coffOff, sizeOfOptionalHeader, numSections);
+                    this.programHeaders = [];
+                    this.parsedSections = this.parsePeSections(view, coffOff, sizeOfOptionalHeader, numSections);
                     this.fileLoaded = true;
                 },
 
-                parsePeSections(view, e_lfanew, coffOff, sizeOfOptionalHeader, numSections) {
+                parsePeSections(view, coffOff, sizeOfOptionalHeader, numSections) {
                     const sectionStart = coffOff + 20 + sizeOfOptionalHeader;
                     const secs = [];
                     for (let i = 0; i < numSections; i++) {
                         const off = sectionStart + i * 40;
-                        // Name (8 bytes)
                         let name = '';
                         for (let j=0; j<8; j++) {
                             const ch = view.getUint8(off+j);
@@ -537,52 +553,45 @@
                     return secs;
                 },
 
-                // --------------- Общие методы ---------------
+                getFieldDescription() {
+                    if (!this.selectedFieldKey || !this.fileFormat) return '';
+                    return this.metadata[this.fileFormat]?.descriptions[this.selectedFieldKey] || "Описание для этого поля пока не добавлено в базу знаний.";
+                },
+                getCurrentDictionary() {
+                    if (!this.selectedFieldKey || !this.fileFormat) return null;
+                    return this.metadata[this.fileFormat]?.dictionaries[this.selectedFieldKey] || null;
+                },
                 getHumanReadableValue(fieldName, rawValue) {
-                    const dict = this.getCurrentDictionary();
+                    const dict = this.metadata[this.fileFormat]?.dictionaries[fieldName];
                     if (dict && dict[rawValue] !== undefined) return dict[rawValue];
-                    if (typeof rawValue === 'number' && rawValue > 0xFFFF) {
-                        return '0x' + rawValue.toString(16).toUpperCase();
-                    }
+                    if (typeof rawValue === 'number' && rawValue > 0xFFFF) return '0x'+rawValue.toString(16).toUpperCase();
                     return rawValue;
                 },
 
-                getCurrentDictionary() {
-                    if (!this.selectedFieldKey || !this.fileFormat) return null;
-                    return this.dictionaries[this.fileFormat]?.[this.selectedFieldKey] || null;
-                },
-
                 selectHeaderField(key, field) {
-                    if (field.size === 0) return;  // виртуальные поля не редактируются
                     this.selectedFieldKey = key;
                     this.selectedFieldData = field;
                     this.formValue = field.value;
                 },
-
                 updateFieldValue() {
-                    if (!this.selectedFieldKey || !this.fileBuffer) return;
+                    if (!this.selectedFieldKey || !this.fileBuffer || !this.selectedFieldData || this.selectedFieldData.size === 0) return;
                     const view = new DataView(this.fileBuffer);
                     const { offset, size } = this.selectedFieldData;
                     const le = this.isLittleEndian;
                     const val = Number(this.formValue);
-
                     if (size === 1) view.setUint8(offset, val);
                     else if (size === 2) view.setUint16(offset, val, le);
                     else if (size === 4) view.setUint32(offset, val, le);
                     else if (size === 8) view.setBigUint64(offset, BigInt(val), le);
-
                     this.selectedFieldData.value = val;
-                    // При изменении критичных полей перепаршиваем всё
                     if (['e_ident_class','e_ident_data','Magic','Machine'].includes(this.selectedFieldKey)) {
                         this.detectAndParse();
                     }
                 },
-
                 resetSelection() {
                     this.selectedFieldKey = null;
                     this.selectedFieldData = null;
                 },
-
                 downloadFile() {
                     if (!this.fileBuffer) return;
                     const blob = new Blob([this.fileBuffer], { type: 'application/octet-stream' });
